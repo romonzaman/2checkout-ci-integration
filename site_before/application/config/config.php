@@ -376,16 +376,3 @@ $config['proxy_ips'] = '';
 
 /* End of file config.php */
 /* Location: ./application/config/config.php */
-
-function __autoload($class)
-{
-    if(strpos($class, 'CI_') !== 0)
-    {
-
-        $lib = APPPATH . 'libraries/twocheckout/lib/'. $class . EXT;
-        if(file_exists($lib))
-        {
-            include_once( $lib );
-        }
-    }
-}
