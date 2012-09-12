@@ -8,9 +8,9 @@ class Order extends CI_Controller {
 
 		$this->load->database();
 
-		require_once(APPPATH . 'libraries/twocheckout/Twocheckout.php');
-
 		$this->form_validation->set_error_delimiters($this->config->item('error_start_delimiter', 'ion_auth'), $this->config->item('error_end_delimiter', 'ion_auth'));
+
+		require_once(APPPATH . 'libraries/Twocheckout.php');
 	}
 
 	public function register()
@@ -44,7 +44,7 @@ class Order extends CI_Controller {
 			$id = $row->id; 
 
 			$args = array(
-			    'sid' => 532001,
+			    'sid' => 1817037,
 			    'mode' => "2CO",
 			    'li_0_name' => "Monthly Subscription",
 			    'li_0_price' => "1.00",
@@ -138,14 +138,16 @@ class Order extends CI_Controller {
 		$message = Twocheckout_Notification::check($params, "tango", 'array');
 
 		if ($message['code'] == 'Success') {
-		
+
 			switch ($params['message_type']) {
 				case 'FRAUD_STATUS_CHANGED':
-					$id = $params['vendor_order_id'];
-					$data = array(
-						'active' => 0
-						);
-					$this->ion_auth->update($id, $data);
+					if ($params['fraud_status'] == 'fail') {
+						$id = $params['vendor_order_id'];
+						$data = array(
+							'active' => 0
+							);
+						$this->ion_auth->update($id, $data);
+					}
 					break;
 				case 'RECURRING_INSTALLMENT_FAILED':
 					$id = $params['vendor_order_id'];
@@ -155,11 +157,10 @@ class Order extends CI_Controller {
 					$this->ion_auth->update($id, $data);
 					break;
 				case 'RECURRING_INSTALLMENT_SUCCESS':
-
-				    $user = $this->ion_auth->user()->row();
+					$id = $params['vendor_order_id'];
+				    $user = $this->ion_auth->user($id)->row();
 					$status = $user->active;
 					if ($status == 0) {
-						$id = $params['vendor_order_id'];
 						$data = array(
 							'active' => 1
 							);
@@ -175,10 +176,9 @@ class Order extends CI_Controller {
 		if ($this->input->post('cancel')) {
 		    $user = $this->ion_auth->user()->row();
 			$order_number = $user->order_number;
-			Twocheckout::setCredentials("apichristenson", "qwe");
+			Twocheckout::setCredentials("APIuser1817037", "APIpass1817037");
 			$args = array('sale_id' => $order_number);
-			$test = Twocheckout_Sale::stop($args, 'array');
-
+			Twocheckout_Sale::stop($args, 'array');
 			$id = $user->id;
 			$data = array(
 				'active' => 0
@@ -200,6 +200,7 @@ class Order extends CI_Controller {
 		$order_number = $user->order_number;
 		redirect('https://www.2checkout.com/va/sales/customer/change_billing_method?sale_id='.$order_number, 'refresh');
 	}
+
 }
 
 /* End of file order.php */
