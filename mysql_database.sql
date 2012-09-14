@@ -40,11 +40,13 @@ CREATE TABLE `users` (
   `remember_code` varchar(40) DEFAULT NULL,
   `created_on` int(11) unsigned NOT NULL,
   `last_login` int(11) unsigned DEFAULT NULL,
+  `last_billed` int(11) unsigned DEFAULT NULL,
   `active` tinyint(1) unsigned DEFAULT NULL,
   `first_name` varchar(50) DEFAULT NULL,
   `last_name` varchar(50) DEFAULT NULL,
   `company` varchar(100) DEFAULT NULL,
   `order_number` varchar(20) DEFAULT NULL,
+  `last_invoice` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`)
 );
 

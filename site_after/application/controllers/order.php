@@ -31,6 +31,8 @@ class Order extends CI_Controller {
 			$additional_data = array(
 				'first_name' => $this->input->post('first_name'),
 				'last_name'  => $this->input->post('last_name'),
+				'last_billed' => time()
+
 			);
 		}
 		if ($this->form_validation->run() == true && $this->ion_auth->register($username, $password, $email, $additional_data))
@@ -110,9 +112,11 @@ class Order extends CI_Controller {
 		if ($passback['code'] == 'Success') {
 			$id = $params['merchant_order_id'];
 			$order_number = $params['order_number'];
+			$invoice_id = $params['invoice_id'];
 			$data = array(
 				'active' => 1,
-				'order_number' => $order_number
+				'order_number' => $order_number,
+				'last_invoice' => $invoice_id
 				);
 			$this->ion_auth->update($id, $data);
 
@@ -160,12 +164,12 @@ class Order extends CI_Controller {
 					$id = $params['vendor_order_id'];
 				    $user = $this->ion_auth->user($id)->row();
 					$status = $user->active;
-					if ($status == 0) {
 						$data = array(
-							'active' => 1
+							'active' => 1,
+							'last_billed' => time(),
+							'last_invoice' => $params['invoice_id']
 							);
 						$this->ion_auth->update($id, $data);
-					}
 					break;
 			}
 		}
@@ -176,17 +180,50 @@ class Order extends CI_Controller {
 		if ($this->input->post('cancel')) {
 		    $user = $this->ion_auth->user()->row();
 			$order_number = $user->order_number;
+			$invoice_id = $user->last_invoice;
+			
+			//Define API User and Password
 			Twocheckout::setCredentials("APIuser1817037", "APIpass1817037");
+
+			//Stop recurring billing
 			$args = array('sale_id' => $order_number);
 			Twocheckout_Sale::stop($args, 'array');
+
+
+			$last_bill_date = $user->last_billed;
+			$next_bill_date = strtotime('+1 month',$last_bill_date);
+			$remaining_days = floor(abs(time() - $next_bill_date)/60/60/24);
+			$refund_amount = round((1.00 / 30) * $remaining_days, 2);
+
+			//Refund remaining balance
+			$args = array(
+				'invoice_id' => $invoice_id,
+				'category' => 5,
+				'amount' => $refund_amount,
+				'currency' => 'vendor',
+				'comment' => 'Refunding remaining balance'
+				);
+			Twocheckout_Sale::refund($args, 'array');
+
+			//Deactivate User
 			$id = $user->id;
 			$data = array(
 				'active' => 0
 				);
 			$this->ion_auth->update($id, $data);
+			$this->ion_auth->logout();
 
-			redirect('frontpage/index', 'refresh');
-		} else {
+			//Reinit $data array for view
+			$data = array(
+               'remaining_days' => $remaining_days,
+               'refund_amount' => $refund_amount
+          	);
+
+			$this->load->view('/include/header');
+		  	$this->load->view('/include/navblank');
+		  	$this->load->view('/order/cancel_success', $data);
+		    $this->load->view('/include/footer');
+		 } else {
 			$this->load->view('/include/header');
 		  	$this->load->view('/include/navblank');
 		  	$this->load->view('/order/cancel');
